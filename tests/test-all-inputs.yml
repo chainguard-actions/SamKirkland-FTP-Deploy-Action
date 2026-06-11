@@ -1,0 +1,37 @@
+name: Test all inputs (dry-run)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create local-dir with sample files
+        run: |
+          mkdir -p ./upload-dir
+          echo "hello world" > ./upload-dir/index.html
+          echo "style" > ./upload-dir/style.css
+      - id: action
+        uses: .
+        with:
+          server: "ftp.example.com"
+          username: "testuser"
+          password: "testpassword"
+          port: "21"
+          protocol: "ftp"
+          local-dir: "./upload-dir/"
+          server-dir: "/public_html/"
+          state-name: ".ftp-deploy-sync-state.json"
+          dry-run: "true"
+          dangerous-clean-slate: "false"
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+          log-level: "standard"
+          security: "loose"
+          timeout: "30000"
+      - name: Assert dry-run completed
+        run: |
+          echo "Action completed in dry-run mode"
+          echo "PASS"
