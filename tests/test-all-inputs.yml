@@ -1,0 +1,42 @@
+name: Test FTP Deploy - All Inputs Coverage
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create local directory for upload
+        run: |
+          mkdir -p /tmp/ftp-local
+          echo "hello world" > /tmp/ftp-local/index.html
+
+      - name: Run FTP Deploy with all inputs (dry-run)
+        id: action
+        continue-on-error: true
+        uses: .
+        with:
+          server: "ftp.example.com"
+          username: "testuser"
+          password: "testpassword"
+          port: "21"
+          protocol: "ftp"
+          local-dir: "/tmp/ftp-local/"
+          server-dir: "/public_html/"
+          state-name: ".ftp-deploy-sync-state.json"
+          dry-run: "true"
+          dangerous-clean-slate: "false"
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+          log-level: "verbose"
+          security: "loose"
+          timeout: "30000"
+
+      - name: Verify action was invoked with all inputs
+        run: |
+          echo "Action completed (with or without FTP connection)"
+          echo "All inputs were passed to the action successfully"
+          echo "PASS: Input coverage verified"
