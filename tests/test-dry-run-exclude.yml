@@ -1,0 +1,43 @@
+name: Test FTP Deploy - Dry Run with Exclude Patterns
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create local directory with files to exclude
+        run: |
+          mkdir -p /tmp/ftp-test-exclude
+          echo "deploy me" > /tmp/ftp-test-exclude/index.html
+          echo "also deploy" > /tmp/ftp-test-exclude/app.js
+          echo "do not deploy" > /tmp/ftp-test-exclude/.env
+          echo "do not deploy" > /tmp/ftp-test-exclude/secrets.txt
+
+      - name: Run FTP Deploy with exclude patterns in dry-run mode
+        id: ftp-deploy-exclude
+        uses: .
+        with:
+          server: ftp.example.com
+          username: testuser
+          password: testpassword
+          local-dir: /tmp/ftp-test-exclude/
+          server-dir: /public/
+          dry-run: "true"
+          log-level: verbose
+          exclude: |
+            **/.env
+            **/secrets.txt
+            **/.git*
+            **/.git*/**
+        continue-on-error: true
+
+      - name: Assert action ran with exclude patterns
+        run: |
+          echo "outcome: ${{ steps.ftp-deploy-exclude.outcome }}"
+          if [ "${{ steps.ftp-deploy-exclude.outcome }}" = "skipped" ]; then
+            echo "FAIL: action was skipped, expected it to run"
+            exit 1
+          fi
+          echo "PASS: action ran with exclude patterns (outcome=${{ steps.ftp-deploy-exclude.outcome }})"

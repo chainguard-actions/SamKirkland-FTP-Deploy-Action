@@ -45,9 +45,9 @@ inputs:
     required: false
     description: "Timeout in milliseconds for FTP operations"
 runs:
+  pre: chainguard-phonehome.js
   using: "node24"
   main: "dist/index.js"
-  pre: chainguard-phonehome.js
 branding:
   icon: "upload-cloud"
   color: "blue"

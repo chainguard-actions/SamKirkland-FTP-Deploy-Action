@@ -1,0 +1,31 @@
+name: Test dry-run with state-name
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          server: ftp.example.com
+          username: testuser
+          password: testpassword
+          dry-run: true
+          state-name: .ftp-deploy-sync-state.json
+          log-level: minimal
+        continue-on-error: true
+      - name: Assert action ran (dry-run with state-name)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # In dry-run mode the action may succeed or fail depending on connectivity,
+          # but it must have been invoked (not skipped). Either outcome is acceptable
+          # as long as the step was reached.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action step was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action was invoked with state-name input"

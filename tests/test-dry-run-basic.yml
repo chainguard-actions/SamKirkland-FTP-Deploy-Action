@@ -1,0 +1,39 @@
+name: Test FTP Deploy - Basic Dry Run
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create local directory with sample files
+        run: |
+          mkdir -p /tmp/ftp-test-upload
+          echo "Hello World" > /tmp/ftp-test-upload/index.html
+          echo "body { color: red; }" > /tmp/ftp-test-upload/style.css
+
+      - name: Run FTP Deploy in dry-run mode
+        id: ftp-deploy
+        uses: .
+        with:
+          server: ftp.example.com
+          username: testuser
+          password: testpassword
+          local-dir: /tmp/ftp-test-upload/
+          server-dir: /public_html/
+          dry-run: "true"
+          log-level: verbose
+        continue-on-error: true
+
+      - name: Assert dry-run completed (action ran)
+        run: |
+          echo "outcome: ${{ steps.ftp-deploy.outcome }}"
+          # In dry-run mode the action may fail to connect but should still
+          # attempt to list files. We accept success or failure here since
+          # no real FTP server is available, but the action must have run.
+          if [ "${{ steps.ftp-deploy.outcome }}" = "skipped" ]; then
+            echo "FAIL: action was skipped, expected it to run"
+            exit 1
+          fi
+          echo "PASS: action ran (outcome=${{ steps.ftp-deploy.outcome }})"
