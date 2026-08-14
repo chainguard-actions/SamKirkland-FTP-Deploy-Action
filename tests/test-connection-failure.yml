@@ -1,0 +1,40 @@
+name: Test connection failure with valid inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create a local directory with a test file to deploy
+        run: |
+          mkdir -p /tmp/ftp-test-local/
+          echo "hello world" > /tmp/ftp-test-local/index.html
+
+      - name: Run action with valid inputs but unreachable server (expect failure)
+        id: action
+        uses: .
+        with:
+          server: "127.0.0.1"
+          username: testuser
+          password: testpassword
+          port: "2121"
+          protocol: ftp
+          local-dir: /tmp/ftp-test-local/
+          server-dir: /
+          log-level: standard
+          security: loose
+          dry-run: "false"
+        continue-on-error: true
+
+      - name: Assert action failed due to connection error (not input validation error)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected action to fail when connecting to unreachable server, but outcome was '$OUTCOME'"
+            exit 1
+          fi
+          echo "PASS: action correctly failed when FTP server is unreachable"

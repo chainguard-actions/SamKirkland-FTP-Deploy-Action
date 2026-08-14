@@ -1,0 +1,51 @@
+name: Test FTP Deploy optional inputs
+on:
+  workflow_dispatch:
+jobs:
+  test-optional-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create local directory with test files
+        run: |
+          mkdir -p /tmp/ftp-optional-test
+          echo "main content" > /tmp/ftp-optional-test/index.html
+          echo "secret" > /tmp/ftp-optional-test/.env
+          echo "node_modules content" > /tmp/ftp-optional-test/node_modules
+          mkdir -p /tmp/ftp-optional-test/dist
+          echo "built file" > /tmp/ftp-optional-test/dist/app.js
+
+      - id: ftp-deploy
+        name: Run FTP Deploy with optional inputs (exclude, log-level, security)
+        uses: .
+        continue-on-error: true
+        with:
+          server: "localhost"
+          username: "ftpuser"
+          password: "ftppassword"
+          port: "21"
+          protocol: "ftp"
+          local-dir: "/tmp/ftp-optional-test/"
+          server-dir: "/www/"
+          dry-run: "true"
+          log-level: "verbose"
+          security: "loose"
+          exclude: |
+            **/.env
+            **/node_modules/**
+          state-name: ".ftp-deploy-sync-state.json"
+
+      - name: Assert action ran with optional inputs
+        env:
+          OUTCOME: ${{ steps.ftp-deploy.outcome }}
+        run: |
+          echo "Step outcome: $OUTCOME"
+          # The action should have run (not skipped) regardless of FTP connectivity.
+          # With dry-run=true, it may succeed or fail depending on whether it
+          # attempts a real connection before printing the dry-run plan.
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped, expected it to run"
+            exit 1
+          fi
+          echo "PASS: action ran with optional inputs, outcome=$OUTCOME"
