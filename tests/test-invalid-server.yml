@@ -1,0 +1,40 @@
+name: Test FTP Deploy invalid server error handling
+on:
+  workflow_dispatch:
+jobs:
+  test-invalid-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create local directory with test files
+        run: |
+          mkdir -p /tmp/ftp-test-upload
+          echo "Test content" > /tmp/ftp-test-upload/index.html
+
+      - id: ftp-deploy
+        name: Run FTP Deploy with invalid server (expect failure)
+        uses: .
+        continue-on-error: true
+        with:
+          server: "invalid.nonexistent.server.example.com"
+          username: "testuser"
+          password: "testpassword"
+          port: "21"
+          protocol: "ftp"
+          local-dir: "/tmp/ftp-test-upload/"
+          server-dir: "/"
+          log-level: "verbose"
+          timeout: "5000"
+
+      - name: Assert action failed due to connection error
+        env:
+          OUTCOME: ${{ steps.ftp-deploy.outcome }}
+        run: |
+          echo "Action outcome: $OUTCOME"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: Action correctly failed when connecting to invalid server"
+          else
+            echo "FAIL: Expected failure outcome but got: $OUTCOME"
+            exit 1
+          fi

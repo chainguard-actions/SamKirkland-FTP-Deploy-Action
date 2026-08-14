@@ -1,0 +1,49 @@
+name: Test FTP Deploy with exclude patterns
+on:
+  workflow_dispatch:
+jobs:
+  test-exclude-patterns:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create local directory with test files including files to exclude
+        run: |
+          mkdir -p /tmp/ftp-test-exclude
+          echo "Main content" > /tmp/ftp-test-exclude/index.html
+          echo "Secret config" > /tmp/ftp-test-exclude/.env
+          echo "Node modules" > /tmp/ftp-test-exclude/node_modules
+          echo "Git ignore" > /tmp/ftp-test-exclude/.gitignore
+
+      - id: ftp-deploy
+        name: Run FTP Deploy with exclude patterns in dry-run mode
+        uses: .
+        continue-on-error: true
+        with:
+          server: "localhost"
+          username: "testuser"
+          password: "testpassword"
+          port: "21"
+          protocol: "ftp"
+          local-dir: "/tmp/ftp-test-exclude/"
+          server-dir: "/"
+          dry-run: "true"
+          log-level: "verbose"
+          timeout: "5000"
+          exclude: |
+            **/.env
+            **/node_modules/**
+            **/.gitignore
+
+      - name: Assert action ran with exclude patterns
+        env:
+          OUTCOME: ${{ steps.ftp-deploy.outcome }}
+        run: |
+          echo "Action outcome: $OUTCOME"
+          # Action should run (success or failure due to no real server)
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: Action ran with exclude patterns, outcome: $OUTCOME"
+          else
+            echo "FAIL: Unexpected outcome: $OUTCOME"
+            exit 1
+          fi

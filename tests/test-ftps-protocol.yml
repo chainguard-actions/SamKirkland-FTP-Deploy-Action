@@ -1,0 +1,42 @@
+name: Test FTP Deploy with FTPS protocol
+on:
+  workflow_dispatch:
+jobs:
+  test-ftps-protocol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create local directory with test files
+        run: |
+          mkdir -p /tmp/ftp-test-ftps
+          echo "FTPS test content" > /tmp/ftp-test-ftps/index.html
+          echo "Another file" > /tmp/ftp-test-ftps/about.html
+
+      - id: ftp-deploy
+        name: Run FTP Deploy with FTPS protocol (expect failure - no real server)
+        uses: .
+        continue-on-error: true
+        with:
+          server: "invalid.nonexistent.server.example.com"
+          username: "testuser"
+          password: "testpassword"
+          port: "990"
+          protocol: "ftps"
+          local-dir: "/tmp/ftp-test-ftps/"
+          server-dir: "/"
+          log-level: "verbose"
+          timeout: "5000"
+          security: "loose"
+
+      - name: Assert action failed due to connection error (no real FTPS server)
+        env:
+          OUTCOME: ${{ steps.ftp-deploy.outcome }}
+        run: |
+          echo "Action outcome: $OUTCOME"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: Action correctly failed when connecting to invalid FTPS server"
+          else
+            echo "FAIL: Expected failure outcome but got: $OUTCOME"
+            exit 1
+          fi
