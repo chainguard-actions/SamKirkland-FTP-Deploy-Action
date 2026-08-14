@@ -1,0 +1,22 @@
+name: FTP Test
+
+on:
+  push:
+    branches: [master]
+
+permissions: {}
+
+jobs:
+  deploy:
+    name: 🚀 Deploy website every commit
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚚 Get latest code
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+
+      - name: 📂 Sync files
+        uses: ./
+        with:
+          server: ftp.samkirkland.com
+          username: test@samkirkland.com
+          password: ${{ secrets.ftp_password }}

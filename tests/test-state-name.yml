@@ -1,0 +1,73 @@
+name: Test FTP Deploy - Custom State Name
+on:
+  workflow_dispatch:
+jobs:
+  test-state-name:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install pyftpdlib and start local FTP server
+        run: |
+          pip install pyftpdlib --quiet
+          mkdir -p /tmp/ftp-root
+          python3 -c "
+          from pyftpdlib.handlers import FTPHandler
+          from pyftpdlib.servers import FTPServer
+          from pyftpdlib.authorizers import DummyAuthorizer
+          import threading
+
+          authorizer = DummyAuthorizer()
+          authorizer.add_user('testuser', 'testpass', '/tmp/ftp-root', perm='elradfmwMT')
+
+          handler = FTPHandler
+          handler.authorizer = authorizer
+          handler.passive_ports = range(60000, 60100)
+
+          server = FTPServer(('127.0.0.1', 2121), handler)
+          t = threading.Thread(target=server.serve_forever)
+          t.daemon = True
+          t.start()
+
+          import time
+          time.sleep(3600)
+          " &
+          sleep 2
+          echo "FTP server started on port 2121"
+
+      - name: Create local files to deploy
+        run: |
+          mkdir -p /tmp/local-deploy
+          echo "Hello World" > /tmp/local-deploy/index.html
+
+      - id: ftp-deploy
+        name: Run FTP Deploy with custom state-name
+        uses: .
+        with:
+          server: "127.0.0.1"
+          username: "testuser"
+          password: "testpass"
+          port: "2121"
+          protocol: "ftp"
+          local-dir: "/tmp/local-deploy/"
+          server-dir: "./"
+          state-name: ".custom-ftp-deploy-state.json"
+          log-level: "verbose"
+          security: "loose"
+
+      - name: Assert deploy completed and state file was created
+        run: |
+          echo "Contents of FTP root after deploy with custom state-name:"
+          ls -la /tmp/ftp-root/
+          if [ ! -f "/tmp/ftp-root/index.html" ]; then
+            echo "FAIL: index.html was not deployed to FTP server"
+            exit 1
+          fi
+          if [ ! -f "/tmp/ftp-root/.custom-ftp-deploy-state.json" ]; then
+            echo "FAIL: custom state file .custom-ftp-deploy-state.json was not created on server"
+            exit 1
+          fi
+          echo "PASS: deploy succeeded and custom state file was created"
